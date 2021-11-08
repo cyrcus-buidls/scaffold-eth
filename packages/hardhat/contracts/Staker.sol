@@ -8,7 +8,7 @@ contract Staker {
   ExampleExternalContract public exampleExternalContract;
 
   mapping (address => uint256) public balances;
-  uint256 public constant threshold = .009 ether;
+  uint256 public constant threshold = 1 ether;
   uint256 public deadline = now + 1 minutes;
   enum State { Staking, OpenForWithdraw, Success }
   State state = State.Staking;
@@ -33,7 +33,7 @@ contract Staker {
 
   // After some `deadline` allow anyone to call an `execute()` function
   //  It should either call `exampleExternalContract.complete{value: address(this).balance}()` to send all the value
-  function execute() public returns (bool) {
+  function execute() public notCompleted returns (bool) {
       require (now > deadline, "Deadline not reached yet");
       require (state != State.Success, "Balance successfully sent! No more need to execute.");
       require (state != State.OpenForWithdraw, "Execute called after deadline, before threshold met. Withdraw enabled.");
@@ -51,7 +51,7 @@ contract Staker {
 
 
   // if the `threshold` was not met, allow everyone to call a `withdraw()` function
-  function withdraw(address payable recipient) public returns (uint256) {
+  function withdraw(address payable recipient) public notCompleted returns (uint256) {
     require(state == State.OpenForWithdraw, "Not open for withdraw");
     require(balances[msg.sender] > 0, "No money to withdraw");
 
@@ -77,6 +77,11 @@ contract Staker {
   receive() external payable {
     require(state == State.Staking, "Staking no longer enabled");
     stake();
+  }
+
+  modifier notCompleted() {
+    require(!exampleExternalContract.completed(), "Linked contract is already completed");
+    _;
   }
 
 }
