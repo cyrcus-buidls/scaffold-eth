@@ -10,6 +10,7 @@ contract Staker {
   mapping (address => uint256) public balances;
   uint256 public constant threshold = 1 ether;
   uint256 public deadline = now + 1 minutes;
+  
   enum State { Staking, OpenForWithdraw, Success }
   State state = State.Staking;
 
@@ -50,14 +51,25 @@ contract Staker {
   }
 
 
-  // if the `threshold` was not met, allow everyone to call a `withdraw()` function
-  function withdraw(address payable recipient) public notCompleted returns (uint256) {
+  // if the `threshold` was not met, allow everyone to call a `withdraw(address payable)` function
+  function withdrawToAddress(address payable recipient) public notCompleted returns (uint256) {
     require(state == State.OpenForWithdraw, "Not open for withdraw");
     require(balances[msg.sender] > 0, "No money to withdraw");
 
     uint256 amount = balances[msg.sender];
     balances[msg.sender] = 0;
     recipient.transfer(amount);
+    return amount;
+  }
+
+  // if the `threshold` was not met, allow everyone to call a `withdraw()` function
+  function withdraw() public notCompleted returns (uint256) {
+    require(state == State.OpenForWithdraw, "Not open for withdraw");
+    require(balances[msg.sender] > 0, "No money to withdraw");
+
+    uint256 amount = balances[msg.sender];
+    balances[msg.sender] = 0;
+    msg.sender.transfer(amount);
     return amount;
   }
 
@@ -69,6 +81,7 @@ contract Staker {
     return deadline - now;
   }
 
+  // public function to see if withdraw function is enabled
   function openForWithdraw() public view returns (bool) {
     return state == State.OpenForWithdraw;
   }
@@ -79,6 +92,7 @@ contract Staker {
     stake();
   }
 
+  // Used for disabling functions if the linked contract is already completed
   modifier notCompleted() {
     require(!exampleExternalContract.completed(), "Linked contract is already completed");
     _;
